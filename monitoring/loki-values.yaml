@@ -1,0 +1,13 @@
+# Loki Helm Chart Custom Values
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: 'filesystem'
+
+promtail:
+  config:
+    snippets:
+      pipelineStages:
+        - docker: {}

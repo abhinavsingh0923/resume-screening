@@ -48,12 +48,12 @@ run:
 	@if [ ! -f .env ]; then \
 		echo "⚠️  Warning: .env file not found. Create from .env.template"; \
 	fi
-	uv run streamlit run app.py
+	uv run streamlit run app/app.py
 
 # Run in development mode
 dev:
 	@echo "🔧 Starting in development mode..."
-	uv run streamlit run app.py --server.runOnSave=true
+	uv run streamlit run app/app.py --server.runOnSave=true
 
 # Run tests
 test:
@@ -139,6 +139,16 @@ build:
 	@echo "📦 Building distribution..."
 	uv build
 	@echo "✅ Build complete"
+
+# Docker build
+docker-build:
+	@echo "🐳 Building Docker image..."
+	docker build -t resume-screener .
+
+# Docker run
+docker-run:
+	@echo "🚀 Running Docker container..."
+	docker run -p 8501:8501 --env-file .env resume-screener
 
 # Deploy to Streamlit Cloud (requires git)
 deploy:

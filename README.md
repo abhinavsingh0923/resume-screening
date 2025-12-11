@@ -12,8 +12,11 @@ A modern web application that uses AI to screen and evaluate resumes against job
 
 ## 📋 Requirements
 
-- Python 3.8+
+- Python 3.10+
+- `uv` package manager (recommended)
 - Google Gemini API key
+- Docker (optional)
+- Kubernetes Cluster (for production)
 
 ## 🔧 Installation
 
@@ -25,19 +28,14 @@ A modern web application that uses AI to screen and evaluate resumes against job
 
 2. Set up a virtual environment:
    ```bash
-   python -m venv venv
-   # On Windows
-   venv\Scripts\activate
-   # On macOS/Linux
-   source venv/bin/activate
+   # Install uv if you haven't (https://docs.astral.sh/uv/)
+   pip install uv
+   
+   # Sync dependencies
+   uv sync
    ```
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Create a `.env` file with your API key:
+3. Create a `.env` file with your API key:
    ```
    GOOGLE_API_KEY=your_gemini_api_key_here
    ```
@@ -46,65 +44,126 @@ A modern web application that uses AI to screen and evaluate resumes against job
 
 1. Start the application:
    ```bash
-   streamlit run app.py
+   uv run streamlit run app/app.py
+   # OR using make
+   make run
    ```
 
 2. Open your browser and navigate to `http://localhost:8501`
 
-3. Follow the on-screen instructions:
-   - Enter your Google Gemini API key (if not in .env file)
-   - Paste a job description or upload a JD PDF
-   - Upload resume PDFs (1-10 files)
-   - Click "Screen Resumes"
-   - View the results and analysis
+## 🐳 Docker Usage
 
-## 🧠 How It Works
+1. **Build the image**:
+   ```bash
+   make docker-build
+   # OR
+   docker build -t resume-screener .
+   ```
 
-The application uses a LangGraph workflow to process resumes:
+2. **Run the container**:
+   ```bash
+   make docker-run
+   # OR
+   docker run -p 8501:8501 --env-file .env resume-screener
+   ```
 
-1. **Document Loading**: Extracts text from PDF resumes
-2. **Data Extraction**: Parses resume content into structured data
-3. **JD Matching**: Compares resume data against job requirements
-4. **Scoring**: Evaluates candidates based on multiple criteria
-5. **Visualization**: Presents results in an easy-to-understand format
+## ☸️ Kubernetes Deployment
+
+The application is designed to be deployed on Kubernetes with ArgoCD and monitored using the PLG stack (Prometheus, Loki, Grafana).
+
+### 1. Manual Deployment
+
+```bash
+# Apply Namespace
+kubectl apply -f k8s/namespace.yaml
+
+# Create Secret (Replace w/ actual key first!)
+kubectl apply -f k8s/secret.yaml
+
+# Apply Deployment, Service, HPA, Ingress
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/hpa.yaml
+kubectl apply -f k8s/ingress.yaml
+```
+
+### 2. Monitoring Setup (Helm)
+
+You can install the entire PLG stack (Prometheus, Loki, Grafana) with one command:
+
+```bash
+# Make script executable
+chmod +x monitoring/install.sh
+
+# Run install script
+./monitoring/install.sh
+```
+
+Alternatively, you can install components individually:
+
+```bash
+# Add Helm repos
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+# Install Prometheus
+helm install prometheus prometheus-community/prometheus -n monitoring --create-namespace -f monitoring/prometheus-values.yaml
+
+# Install Loki
+helm install loki grafana/loki-stack -n monitoring -f monitoring/loki-values.yaml
+
+# Install Grafana
+helm install grafana grafana/grafana -n monitoring -f monitoring/grafana-values.yaml
+```
+
+### 📊 Accessing Dashboards
+
+- **Grafana**: http://localhost:80 (via LoadBalancer) or port-forward
+- **Prometheus**: Internal access via Grafana
+- **User**: `admin`
+- **Password**: `admin`
+
+## 🔄 CI/CD Pipeline
+
+The project includes a `Jenkinsfile` for a complete CI/CD pipeline:
+
+1.  **Checkout**: Clones the repo.
+2.  **Test**: Runs `pytest` unit tests.
+3.  **Security Scans**:
+    *   **Trivy**: Scans filesystem and Docker image for vulnerabilities.
+    *   **OWASP Dependency Check**: Checks for vulnerable dependencies.
+4.  **SonarQube**: Performs static code analysis.
+5.  **Build**: Builds the Docker image.
+6.  **Push**: Pushes the image to DockerHub.
+7.  **Deploy**: Updates the Kubernetes manifest in the repo (GitOps).
+
+### Git Workflow
+
+1.  **Develop**: Create a new branch `git checkout -b feature/new-feature`
+2.  **Commit**: `git commit -am "feat: added new feature"`
+3.  **Push**: `git push origin feature/new-feature`
+4.  **Merge**: Create a Pull Request to `main`.
+5.  **CI/CD**: Jenkins automatically picks up the changes on `main`, runs tests, builds, and deploys.
 
 ## 🛠️ Development
 
 ### Project Structure
 
-- `app.py`: Streamlit frontend application
-- `workflow.py`: LangGraph workflow definition
-- `chains.py`: LLM chain definitions for resume processing
-- `.env`: Environment variables (API keys)
+- `app/`: Source code directory
+  - `app.py`: Streamlit frontend application
+  - `workflow.py`: LangGraph workflow definition
+  - `chains.py`: LLM chain definitions
+- `tests/`: Unit tests
+- `k8s/`: Kubernetes manifests (Deployment, Service, Ingress, etc.)
+- `monitoring/`: Helm values for Prometheus/Loki
+- `Jenkinsfile`: CI/CD definition
+- `Dockerfile`: Container configuration
 
 ### Running Tests
 
 ```bash
-pytest
-```
-
-### Using the Makefile
-
-The project includes a Makefile with common commands:
-
-```bash
-# Run the application
-make run
-
-# Run tests
+uv run pytest tests/ -v
+# OR
 make test
-
-# Format code
-make format
-
-# Check code quality
-make lint
 ```
-
-## 📄 License
-
-[MIT License](LICENSE)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
